@@ -1,117 +1,159 @@
-export type EventName = string | RegExp;
-export type Subscriber = Function;
-export type EmitterEvent = {
-    eventName: string,
-    data: unknown
-};
+// ==================== 1. БАЗОВЫЕ ТИПЫ ====================
 
-export interface IEvents {
-  on<T extends object>(event: EventName, callback: (data: T) => void): void;
-  emit<T extends object>(event: string, data?: T): void;
-  trigger<T extends object>(event: string, context?: Partial<T>): (data: T) => void;
+export interface Identifiable {
+  id: string;
 }
 
-export type ApiListResponse<Type> = {
-  total: number,
-  items: Type[]
-};
+// ==================== 2. ТИПЫ ДАННЫХ ====================
 
-export type ApiPostMethods = 'POST' | 'PUT' | 'DELETE';
-
-
-export interface IFormState {
-    valid: boolean;
-    errors: string[];
-}
-
-
-export interface IModalData {
-    content: HTMLElement;
-}
-
-
-export interface ILarekAPI {
-  getProductList: () => Promise<IProduct[]>;
-  getProductItem: (id: string) => Promise<IProduct>;
-  orderProducts: (order: IOrder) => Promise<IOrderResult>
-}
-
-
-export interface IProduct {
+export interface ApiProduct {
   id: string;
   title: string;
-  price: number | null;
   description: string;
-  category: string;
+  price: number;
   image: string;
+  category: string;
+  rating: {
+    rate: number;
+    count: number;
+  };
 }
 
-
-export interface IAppState {
-  catalog: IProduct[];
-  basket: IProduct[];
-  preview: string | null;
-  delivery: IDeliveryForm | null;
-  contact: IContactForm | null;
-  order: IOrder | null;
+export interface Product extends Identifiable {
+  title: string;
+  description: string;
+  price: number | null;
+  image: string;
+  category: string;
 }
 
+export enum PaymentType {
+  ONLINE = 'online',
+  CASH = 'cash'
+}
 
-export interface IDeliveryForm {
-  payment: string;
+export interface Order {
+  payment: PaymentType;
   address: string;
-}
-
-
-export interface IContactForm {
   email: string;
   phone: string;
-}
-
-
-export interface IOrder extends IDeliveryForm, IContactForm {
-  total: number;
   items: string[];
-}
-
-
-export interface IOrderResult {
-  id: string;
   total: number;
 }
 
+// ==================== 3. ИНТЕРФЕЙСЫ МОДЕЛЕЙ (MODEL) ====================
 
-export type FormErrors = Partial<Record<keyof IOrder, string>>;
-
-
-export interface ICard extends IProduct{
-  index?: string;
-  buttonTitle? : string;
+export interface ICartModel {
+  add(item: Product): void;
+  remove(itemId: string): void;
+  clear(): void;
+  getItems(): string[];
+  getTotal(): number;
+  hasItem(itemId: string): boolean;
+  getItemCount(): number;
+  getProducts(): Product[];
+  getProduct(itemId: string): Product | undefined;
 }
 
-
-export interface IBasketView {
-  items: HTMLElement[];
+export interface IOrderModel {
+  payment: PaymentType;
+  address: string;
+  email: string;
+  phone: string;
+  items: string[];
   total: number;
+  customerFullInfo: Order;
+  validateStep1(): ValidationErrors;
+  validateStep2(): ValidationErrors;
+  reset(): void;
 }
 
+// ==================== 4. ИНТЕРФЕЙСЫ ПРЕДСТАВЛЕНИЙ (VIEW) ====================
 
-export interface IPage{
-  counter: number;
-  catalog: HTMLElement[];
+export interface IView {
+  render(data?: unknown): HTMLElement;
 }
 
-
-export interface ISuccess {
-  total: number;
+export interface IItemView extends IView {
+  data: Product;
+  getCartItemView(template: HTMLTemplateElement): HTMLElement;
+  getModalItemView(template: HTMLTemplateElement): HTMLElement;
+  setAddToCartHandler(handler: (product: Product) => void): void;
+  setRemoveFromCartHandler(handler: (productId: string) => void): void;
+  setIsInCartHandler(handler: (productId: string) => boolean): void;
+  updateButtonState(isInCart: boolean): void;
 }
 
-
-export interface IActions {
-  onClick: (event: MouseEvent) => void;
+export interface ICartView extends IView {
+  addItem(item: HTMLElement, itemId: string, total: number): void;
+  removeItem(itemId: string): void;
+  clear(): void;
+  setCheckoutHandler(handler: () => void): void;
+  setRemoveItemHandler(handler: (productId: string) => void): void;
+  updateTotal(total: number): void;
 }
 
+export interface IFormView extends IView {
+  setSubmitHandler(handler: (data: Partial<Order>) => void): void;
+  showValidationErrors(errors: ValidationErrors): void;
+  clearValidationErrors(): void;
+}
 
-export interface ISuccessActions {
-  onClick: () => void;
+export interface IOrderFormView extends IFormView {
+  setNextStepHandler(handler: () => void): void;
+}
+
+export interface IContactsFormView extends IFormView {
+  setBackHandler(handler: () => void): void;
+}
+
+export interface ISuccessWindowView extends IView {
+  render(total: number): HTMLElement;
+  setContinueShoppingHandler(handler: () => void): void;
+}
+
+export interface IModalView {
+  openModal(element: HTMLElement): void;
+  closeModal(): void;
+  setCloseHandler(handler: () => void): void;
+}
+
+// ==================== 5. ИНТЕРФЕЙС EVENT EMITTER ====================
+
+export interface IEventEmitter {
+  emit<T extends object>(event: string, data?: T): void;
+  on<T extends object>(event: string, callback: (data: T) => void): void;
+  off(event: string, callback: Function): void;
+}
+
+// ==================== 6. ИНТЕРФЕЙС API ====================
+
+export interface IDataApi {
+  getItems(): Promise<{ items: ApiProduct[] }>;
+  getItem(id: string): Promise<ApiProduct>;
+  sendOrder(data: Order): Promise<{ id: string }>;
+}
+
+// ==================== 7. ДАННЫЕ СОБЫТИЙ ====================
+
+export interface IEventData {
+  element?: HTMLElement;
+  data?: Product | string;
+}
+
+// ==================== 8. ПЕРЕЧИСЛЕНИЕ СОБЫТИЙ ====================
+
+export enum Events {
+  MODAL_OPEN = 'modal:open',
+  MODAL_CLOSE = 'modal:close',
+  CART_CHANGED = 'cart:changed',
+}
+
+// ==================== 9. ОШИБКИ ВАЛИДАЦИИ ====================
+
+export interface ValidationErrors {
+  payment?: string;
+  address?: string;
+  email?: string;
+  phone?: string;
 }
