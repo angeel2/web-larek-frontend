@@ -1,36 +1,31 @@
-import { ISuccessWindowView } from '../types';
-import { EventEmitter } from './base/events';
+import { ISuccessView } from '../types';
 import { ensureElement, ensureButtonElement } from '../utils/utils';
 
-export class SuccessWindowView implements ISuccessWindowView {
-    private element: HTMLElement;
-    private events: EventEmitter;
-    private closeButton: HTMLButtonElement;
-    private descriptionElement: HTMLElement;
-    private continueShoppingHandler: (() => void) | null = null;
+export class SuccessWindowView implements ISuccessView {
+  private element: HTMLElement;
+  private descriptionElement: HTMLElement;
+  private closeButton: HTMLButtonElement;
+  private continueHandler?: () => void;
 
-    constructor(template: HTMLElement, events: EventEmitter) {
-        this.element = template;
-        this.events = events;
-        this.closeButton = ensureButtonElement('.order-success__close', this.element);
-        this.descriptionElement = ensureElement('.order-success__description', this.element);
-        this.init();
-    }
+  constructor(template: HTMLElement) {
+    this.element = template;
+    this.descriptionElement = ensureElement('.order-success__description', this.element);
+    this.closeButton = ensureButtonElement('.order-success__close', this.element);
 
-    render(total: number): HTMLElement {
-        this.descriptionElement.textContent = `Списано ${total} синапсов`;
-        return this.element;
-    }
+    this.closeButton.addEventListener('click', () => {
+      this.continueHandler?.();
+    });
+  }
 
-    setContinueShoppingHandler(handler: () => void): void {
-        this.continueShoppingHandler = handler;
+  render(data?: unknown): HTMLElement {
+    const total = data as number;
+    if (total !== undefined) {
+      this.descriptionElement.textContent = `Списано ${total} синапсов`;
     }
+    return this.element;
+  }
 
-    private init(): void {
-        this.closeButton.addEventListener('click', () => {
-            if (this.continueShoppingHandler) {
-                this.continueShoppingHandler();
-            }
-        });
-    }
-}
+  setContinueHandler(handler: () => void): void {
+    this.continueHandler = handler;
+  }
+} 

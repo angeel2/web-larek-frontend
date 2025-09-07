@@ -1,10 +1,6 @@
-// ==================== 1. БАЗОВЫЕ ТИПЫ ====================
-
 export interface Identifiable {
   id: string;
 }
-
-// ==================== 2. ТИПЫ ДАННЫХ ====================
 
 export interface ApiProduct {
   id: string;
@@ -13,10 +9,6 @@ export interface ApiProduct {
   price: number;
   image: string;
   category: string;
-  rating: {
-    rate: number;
-    count: number;
-  };
 }
 
 export interface Product extends Identifiable {
@@ -41,8 +33,6 @@ export interface Order {
   total: number;
 }
 
-// ==================== 3. ИНТЕРФЕЙСЫ МОДЕЛЕЙ (MODEL) ====================
-
 export interface ICartModel {
   add(item: Product): void;
   remove(itemId: string): void;
@@ -52,7 +42,6 @@ export interface ICartModel {
   hasItem(itemId: string): boolean;
   getItemCount(): number;
   getProducts(): Product[];
-  getProduct(itemId: string): Product | undefined;
 }
 
 export interface IOrderModel {
@@ -62,98 +51,71 @@ export interface IOrderModel {
   phone: string;
   items: string[];
   total: number;
-  customerFullInfo: Order;
   validateStep1(): ValidationErrors;
   validateStep2(): ValidationErrors;
   reset(): void;
 }
-
-// ==================== 4. ИНТЕРФЕЙСЫ ПРЕДСТАВЛЕНИЙ (VIEW) ====================
 
 export interface IView {
   render(data?: unknown): HTMLElement;
 }
 
 export interface IItemView extends IView {
-  data: Product;
-  getCartItemView(template: HTMLTemplateElement): HTMLElement;
-  getModalItemView(template: HTMLTemplateElement): HTMLElement;
-  setAddToCartHandler(handler: (product: Product) => void): void;
-  setRemoveFromCartHandler(handler: (productId: string) => void): void;
-  setIsInCartHandler(handler: (productId: string) => boolean): void;
-  updateButtonState(isInCart: boolean): void;
+  setModalHandler(handler: (product: Product) => void): void;
 }
 
 export interface ICartView extends IView {
-  addItem(item: HTMLElement, itemId: string, total: number): void;
-  removeItem(itemId: string): void;
-  clear(): void;
   setCheckoutHandler(handler: () => void): void;
-  setRemoveItemHandler(handler: (productId: string) => void): void;
-  updateTotal(total: number): void;
+  setActionHandler(handler: (productId: string, action: 'remove') => void): void;
 }
 
-export interface IFormView extends IView {
+export interface IOrderFormView extends IView {
   setSubmitHandler(handler: (data: Partial<Order>) => void): void;
-  showValidationErrors(errors: ValidationErrors): void;
-  clearValidationErrors(): void;
+  setNextHandler(handler: () => void): void;
+  showErrors(errors: ValidationErrors): void;
 }
 
-export interface IOrderFormView extends IFormView {
-  setNextStepHandler(handler: () => void): void;
-}
-
-export interface IContactsFormView extends IFormView {
+export interface IContactsFormView extends IView {
+  setSubmitHandler(handler: (data: Partial<Order>) => void): void;
   setBackHandler(handler: () => void): void;
+  showErrors(errors: ValidationErrors): void;
 }
 
-export interface ISuccessWindowView extends IView {
-  render(total: number): HTMLElement;
-  setContinueShoppingHandler(handler: () => void): void;
+export interface ISuccessView extends IView {
+  setContinueHandler(handler: () => void): void;
+}
+
+export interface IProductModalView extends IView {
+  setActionHandler(handler: (product: Product, action: 'add' | 'remove') => void): void;
+  setCloseHandler(handler: () => void): void;
+  updateCartState(isInCart: boolean): void;
+  getCurrentProductId(): string | null;
+  getCurrentProduct(): Product | null;
 }
 
 export interface IModalView {
-  openModal(element: HTMLElement): void;
-  closeModal(): void;
-  setCloseHandler(handler: () => void): void;
+  open(content: HTMLElement): void;
+  close(): void;
+  isOpen(): boolean;
 }
 
-// ==================== 5. ИНТЕРФЕЙС EVENT EMITTER ====================
-
-export interface IEventEmitter {
-  emit<T extends object>(event: string, data?: T): void;
-  on<T extends object>(event: string, callback: (data: T) => void): void;
-  off(event: string, callback: Function): void;
-}
-
-// ==================== 6. ИНТЕРФЕЙС API ====================
-
-export interface IDataApi {
+export interface IApi {
   getItems(): Promise<{ items: ApiProduct[] }>;
   getItem(id: string): Promise<ApiProduct>;
   sendOrder(data: Order): Promise<{ id: string }>;
 }
-
-// ==================== 7. ДАННЫЕ СОБЫТИЙ ====================
-
-export interface IEventData {
-  element?: HTMLElement;
-  data?: Product | string;
-}
-
-// ==================== 8. ПЕРЕЧИСЛЕНИЕ СОБЫТИЙ ====================
-
-export enum Events {
-  MODAL_OPEN = 'modal:open',
-  MODAL_CLOSE = 'modal:close',
-  CART_CHANGED = 'cart:changed',
-}
-
-// ==================== 9. ОШИБКИ ВАЛИДАЦИИ ====================
 
 export interface ValidationErrors {
   payment?: string;
   address?: string;
   email?: string;
   phone?: string;
+}
+
+export interface ModalData {
+  content: HTMLElement;
+}
+
+export interface ProductData {
+  product: Product;
 }

@@ -6,7 +6,6 @@ export class ModalView implements IModalView {
     private content: HTMLElement;
     private closeButton: HTMLButtonElement;
     private pageWrapper: HTMLElement;
-    private escHandler: (event: KeyboardEvent) => void;
 
     constructor() {
         this.modal = ensureElement('#modal-container');
@@ -14,45 +13,44 @@ export class ModalView implements IModalView {
         this.closeButton = ensureButtonElement('.modal__close', this.modal);
         this.pageWrapper = ensureElement('.page__wrapper');
         
-        this.escHandler = this.handleEscape.bind(this);
         this.init();
     }
 
-    openModal(element: HTMLElement): void {
-        document.addEventListener('keyup', this.escHandler);
+    open(content: HTMLElement): void {
+        document.addEventListener('keydown', this.handleEscape);
         this.modal.classList.add('modal_active');
         this.pageWrapper.classList.add('page__wrapper_locked');
         
         this.content.innerHTML = '';
-        this.content.appendChild(element);
+        this.content.appendChild(content);
     }
 
-    closeModal(): void {
+    close(): void {
         this.modal.classList.remove('modal_active');
         this.pageWrapper.classList.remove('page__wrapper_locked');
         this.content.innerHTML = '';
-        document.removeEventListener('keyup', this.escHandler);
+        document.removeEventListener('keydown', this.handleEscape);
     }
 
-    setCloseHandler(handler: () => void): void {
-        this.closeButton.addEventListener('click', handler);
+    isOpen(): boolean {
+        return this.modal.classList.contains('modal_active');
     }
 
-    private handleEscape(event: KeyboardEvent): void {
+    private handleEscape = (event: KeyboardEvent): void => {
         if (event.key === 'Escape') {
-            this.closeModal();
+            this.close();
         }
     }
 
     private init(): void {
         this.modal.addEventListener('mousedown', (event) => {
-            if (event.target === event.currentTarget) {
-                this.closeModal();
+            if (event.target === this.modal) {
+                this.close();
             }
         });
 
         this.closeButton.addEventListener('click', () => {
-            this.closeModal();
+            this.close();
         });
 
         this.content.addEventListener('click', (e) => {
