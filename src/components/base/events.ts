@@ -1,9 +1,9 @@
 type EventName = string | RegExp;
-type Subscriber = Function;
+type Subscriber<T = any> = (data: T) => void;
 
 export interface IEvents {
-  on<T extends object>(event: EventName, callback: (data: T) => void): void;
-  emit<T extends object>(event: string, data?: T): void;
+  on<T = any>(event: EventName, callback: Subscriber<T>): void;
+  emit<T = any>(event: string, data?: T): void;
   off(event: EventName, callback: Subscriber): void;
 }
 
@@ -14,14 +14,14 @@ export class EventEmitter implements IEvents {
     this._events = new Map<EventName, Set<Subscriber>>();
   }
 
-  on<T extends object>(eventName: EventName, callback: (event: T) => void) {
+  on<T = any>(eventName: EventName, callback: Subscriber<T>): void {
     if (!this._events.has(eventName)) {
       this._events.set(eventName, new Set<Subscriber>());
     }
-    this._events.get(eventName)?.add(callback);
+    this._events.get(eventName)?.add(callback as Subscriber);
   }
 
-  off(eventName: EventName, callback: Subscriber) {
+  off(eventName: EventName, callback: Subscriber): void {
     if (this._events.has(eventName)) {
       this._events.get(eventName)!.delete(callback);
       if (this._events.get(eventName)?.size === 0) {
@@ -30,11 +30,11 @@ export class EventEmitter implements IEvents {
     }
   }
 
-  emit<T extends object>(eventName: string, data?: T) {
+  emit<T = any>(eventName: string, data?: T): void {
     this._events.forEach((subscribers, name) => {
       if (name instanceof RegExp && name.test(eventName) || name === eventName) {
         subscribers.forEach(callback => callback(data));
       }
     });
   }
-}         
+}

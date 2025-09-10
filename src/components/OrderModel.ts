@@ -1,13 +1,47 @@
-import { IOrderModel, Order, PaymentType, ValidationErrors } from '../types';
+import { IOrderModel, PaymentType, ValidationErrors, Order } from '../types';
 import { validateEmail, validatePhone } from '../utils/utils';
+import { EventEmitter } from './base/events';
 
 export class OrderModel implements IOrderModel {
   payment: PaymentType = PaymentType.ONLINE;
   address: string = '';
   email: string = '';
   phone: string = '';
-  items: string[] = [];
-  total: number = 0;
+  private errors: ValidationErrors = {};
+
+  constructor(private events: EventEmitter) {}
+
+  setData(field: keyof Order, value: any): void {
+    (this as any)[field] = value;
+    this.validate();
+  }
+
+  private validate(): void {
+    const errors: ValidationErrors = {};
+
+    if (!this.payment) {
+      errors.payment = 'Выберите способ оплаты';
+    }
+    
+    if (!this.address.trim()) {
+      errors.address = 'Введите адрес доставки';
+    }
+
+    if (this.email && this.email.trim()) {
+      if (!validateEmail(this.email)) {
+        errors.email = 'Введите корректный email';
+      }
+    }
+
+    if (this.phone && this.phone.trim()) {
+      if (!validatePhone(this.phone)) {
+        errors.phone = 'Введите корректный телефон';
+      }
+    }
+
+    this.errors = errors;
+    this.events.emit('form:validate', errors);
+  }
 
   validateStep1(): ValidationErrors {
     const errors: ValidationErrors = {};
@@ -39,7 +73,16 @@ export class OrderModel implements IOrderModel {
     this.address = '';
     this.email = '';
     this.phone = '';
-    this.items = [];
-    this.total = 0;
+    this.errors = {};
+    this.events.emit('form:validate', {});
+  }
+
+  getOrderData(): Omit<Order, 'items' | 'total'> {
+    return {
+      payment: this.payment,
+      address: this.address,
+      email: this.email,
+      phone: this.phone
+    };
   }
 }

@@ -206,6 +206,33 @@ SuccessWindowView - **Окно успешного оформления
 - render(data) - Рендеринг окна успеха
 - setContinueHandler(handler) - Обработчик продолжения покупок
 
+CartItemView - **Элемент корзины покупок
+**Назначение: Отображение отдельного товара в списке корзины
+
+**Поля:
+- element: HTMLElement - DOM элемент товара
+- indexEl: HTMLElement - Элемент порядкового номера
+- titleEl: HTMLElement - Элемент названия товара
+- priceEl: HTMLElement - Элемент цены товара
+- deleteBtn: HTMLElement - Кнопка удаления товара
+
+**Методы:
+- render() - Отрисовывает элемент корзины с данными товара
+- getElement() - Возвращает DOM элемент для вставки в список
+- initHandlers() - Инициализирует обработчик удаления товара
+
+HeaderView - **Шапка приложения
+**Назначение: Управление элементами header и корзиной
+
+**Поля:
+- basketButton: HTMLElement - Кнопка открытия корзины
+- basketCounter: HTMLElement - Счетчик товаров в корзине
+
+**Методы:
+- updateCounter(count) - Обновляет отображение счетчика товаров
+- showEmptyCartNotification() - Показывает уведомление о пустой корзине
+- setBasketEnabled(isEnabled) - Управляет состоянием кнопки корзины
+
 ## Presenter (index.ts)
 **Назначение: Главный координатор, связывающий все компоненты приложения
 

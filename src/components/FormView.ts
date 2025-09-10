@@ -1,5 +1,6 @@
-import { IOrderFormView, IContactsFormView, Order, PaymentType, ValidationErrors } from '../types';
-import { ensureElement, ensureButtonElement, ensureInputElement, validateEmail, validatePhone } from '../utils/utils';
+import { IOrderFormView, IContactsFormView, PaymentType, ValidationErrors } from '../types';
+import { ensureElement, ensureButtonElement, ensureInputElement } from '../utils/utils';
+import { EventEmitter } from './base/events';
 
 export class OrderFormView implements IOrderFormView {
   private element: HTMLElement;
@@ -8,11 +9,9 @@ export class OrderFormView implements IOrderFormView {
   private addressInput: HTMLInputElement;
   private nextButton: HTMLButtonElement;
   private errorsContainer: HTMLElement;
-  private submitHandler?: (data: Partial<Order>) => void;
-  private nextHandler?: () => void;
-  private selectedPayment: PaymentType | null = null;
+  private currentPayment: PaymentType | null = null;
 
-  constructor(template: HTMLElement) {
+  constructor(template: HTMLElement, private events: EventEmitter) {
     this.element = template;
     this.onlineButton = ensureButtonElement('button[name="card"]', this.element);
     this.cashButton = ensureButtonElement('button[name="cash"]', this.element);
@@ -24,79 +23,90 @@ export class OrderFormView implements IOrderFormView {
   }
 
   render(data?: unknown): HTMLElement {
-    const orderData = data as Partial<Order>;
-    if (orderData?.payment) {
-      this.setPayment(orderData.payment);
-    }
-    if (orderData?.address) {
-      this.addressInput.value = orderData.address;
-    }
+    const orderData = data as { payment?: PaymentType; address?: string };
+    
+    this.setPayment(orderData?.payment || PaymentType.ONLINE, false);
+    this.addressInput.value = orderData?.address || '';
+    
     this.updateButton();
     this.clearErrors();
     return this.element;
   }
 
-  setSubmitHandler(handler: (data: Partial<Order>) => void): void {
-    this.submitHandler = handler;
-  }
-
-  setNextHandler(handler: () => void): void {
-    this.nextHandler = handler;
-  }
-
   showErrors(errors: ValidationErrors): void {
     this.clearErrors();
+    
     if (errors.payment) {
       const error = document.createElement('div');
       error.className = 'form__error';
       error.textContent = errors.payment;
       this.errorsContainer.appendChild(error);
     }
+    
     if (errors.address) {
       const error = document.createElement('div');
       error.className = 'form__error';
       error.textContent = errors.address;
       this.errorsContainer.appendChild(error);
     }
+
+    this.updateButton();
+  }
+
+  validate(errors: ValidationErrors): void {
+    this.showErrors(errors);
+  }
+
+  private init(): void {
+    this.onlineButton.addEventListener('click', () => {
+      this.setPayment(PaymentType.ONLINE, true);
+    });
+
+    this.cashButton.addEventListener('click', () => {
+      this.setPayment(PaymentType.CASH, true);
+    });
+
+    this.addressInput.addEventListener('input', () => {
+      this.events.emit('order:change', { field: 'address', value: this.addressInput.value });
+      this.updateButton();
+    });
+
+    this.nextButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.events.emit('order:next');
+    });
+
+    this.element.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.events.emit('order:next');
+    });
+  }
+
+  private setPayment(payment: PaymentType, emitEvent: boolean): void {
+    this.currentPayment = payment;
+    this.onlineButton.classList.toggle('button_alt-active', payment === PaymentType.ONLINE);
+    this.cashButton.classList.toggle('button_alt-active', payment === PaymentType.CASH);
+    
+    if (emitEvent) {
+      this.events.emit('order:change', { field: 'payment', value: payment });
+    }
+    
+    this.updateButton();
+  }
+
+  private updateButton(): void {
+    const hasPayment = this.currentPayment !== null;
+    const hasAddress = this.addressInput.value.trim() !== '';
+    this.nextButton.disabled = !(hasPayment && hasAddress);
   }
 
   private clearErrors(): void {
     this.errorsContainer.innerHTML = '';
   }
 
-  private init(): void {
-    this.onlineButton.addEventListener('click', () => this.setPayment(PaymentType.ONLINE));
-    this.cashButton.addEventListener('click', () => this.setPayment(PaymentType.CASH));
-    this.addressInput.addEventListener('input', () => this.updateButton());
-    
-    this.element.addEventListener('submit', (e) => {
-      e.preventDefault();
-      this.submit();
-    });
-  }
-
-  private setPayment(payment: PaymentType): void {
-    this.selectedPayment = payment;
-    this.onlineButton.classList.toggle('button_alt-active', payment === PaymentType.ONLINE);
-    this.cashButton.classList.toggle('button_alt-active', payment === PaymentType.CASH);
-    this.updateButton();
-  }
-
-  private updateButton(): void {
-    const hasPayment = this.selectedPayment !== null;
-    const hasAddress = this.addressInput.value.trim() !== '';
-    this.nextButton.disabled = !(hasPayment && hasAddress);
-  }
-
-  private submit(): void {
-    if (this.selectedPayment && this.addressInput.value.trim()) {
-      this.submitHandler?.({ 
-        payment: this.selectedPayment, 
-        address: this.addressInput.value.trim() 
-      });
-      this.nextHandler?.();
-    }
-  }
+  setNextHandler(handler: () => void): void {}
+  setSubmitHandler(handler: (data: any) => void): void {}
 }
 
 export class ContactsFormView implements IContactsFormView {
@@ -105,76 +115,87 @@ export class ContactsFormView implements IContactsFormView {
   private phoneInput: HTMLInputElement;
   private submitButton: HTMLButtonElement;
   private errorsContainer: HTMLElement;
-  private submitHandler?: (data: Partial<Order>) => void;
-  private backHandler?: () => void;
 
-  constructor(template: HTMLElement) {
+  constructor(template: HTMLElement, private events: EventEmitter) {
     this.element = template;
     this.emailInput = ensureInputElement('input[name="email"]', this.element);
     this.phoneInput = ensureInputElement('input[name="phone"]', this.element);
     this.submitButton = ensureButtonElement('button[type="submit"]', this.element);
     this.errorsContainer = ensureElement('.form__errors', this.element);
 
-    this.emailInput.addEventListener('input', () => this.updateButton());
-    this.phoneInput.addEventListener('input', () => this.updateButton());
-    
-    this.element.addEventListener('submit', (e) => {
-      e.preventDefault();
-      this.submit();
-    });
+    this.init();
   }
 
   render(data?: unknown): HTMLElement {
-    const orderData = data as Partial<Order>;
-    if (orderData?.email) this.emailInput.value = orderData.email;
-    if (orderData?.phone) this.phoneInput.value = orderData.phone;
+    const orderData = data as { email?: string; phone?: string };
+    
+    this.emailInput.value = orderData?.email || '';
+    this.phoneInput.value = orderData?.phone || '';
+    
     this.updateButton();
     this.clearErrors();
     return this.element;
   }
 
-  setSubmitHandler(handler: (data: Partial<Order>) => void): void {
-    this.submitHandler = handler;
-  }
-
-  setBackHandler(handler: () => void): void {
-    this.backHandler = handler;
-  }
-
   showErrors(errors: ValidationErrors): void {
     this.clearErrors();
+    
     if (errors.email) {
       const error = document.createElement('div');
       error.className = 'form__error';
       error.textContent = errors.email;
       this.errorsContainer.appendChild(error);
     }
+    
     if (errors.phone) {
       const error = document.createElement('div');
       error.className = 'form__error';
       error.textContent = errors.phone;
       this.errorsContainer.appendChild(error);
     }
+
+    this.updateButton();
+  }
+
+  validate(errors: ValidationErrors): void {
+    this.showErrors(errors);
+  }
+
+  private init(): void {
+    this.emailInput.addEventListener('input', () => {
+      this.events.emit('order:change', { field: 'email', value: this.emailInput.value });
+      this.updateButton();
+    });
+
+    this.phoneInput.addEventListener('input', () => {
+      this.events.emit('order:change', { field: 'phone', value: this.phoneInput.value });
+      this.updateButton();
+    });
+
+    this.submitButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.events.emit('order:submit');
+    });
+
+    this.element.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.events.emit('order:submit');
+    });
+  }
+
+  private updateButton(): void {
+    const email = this.emailInput.value.trim();
+    const phone = this.phoneInput.value.trim();
+    const isEnabled = email !== '' && phone !== '';
+    
+    this.submitButton.disabled = !isEnabled;
   }
 
   private clearErrors(): void {
     this.errorsContainer.innerHTML = '';
   }
 
-  private updateButton(): void {
-    const email = this.emailInput.value.trim();
-    const phone = this.phoneInput.value.trim();
-    const isValidEmail = validateEmail(email);
-    const isValidPhone = validatePhone(phone);
-    this.submitButton.disabled = !(email && phone && isValidEmail && isValidPhone);
-  }
-
-  private submit(): void {
-    const email = this.emailInput.value.trim();
-    const phone = this.phoneInput.value.trim();
-    
-    if (email && phone) {
-      this.submitHandler?.({ email, phone });
-    }
-  }
+  setBackHandler(handler: () => void): void {}
+  setSubmitHandler(handler: (data: any) => void): void {}
 }

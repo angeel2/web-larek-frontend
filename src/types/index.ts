@@ -42,6 +42,7 @@ export interface ICartModel {
   hasItem(itemId: string): boolean;
   getItemCount(): number;
   getProducts(): Product[];
+  getAllProducts(): Product[]; 
 }
 
 export interface IOrderModel {
@@ -49,11 +50,11 @@ export interface IOrderModel {
   address: string;
   email: string;
   phone: string;
-  items: string[];
-  total: number;
   validateStep1(): ValidationErrors;
   validateStep2(): ValidationErrors;
   reset(): void;
+  getOrderData(): Omit<Order, 'items' | 'total'>;
+  setData(field: keyof Order, value: any): void;
 }
 
 export interface IView {
@@ -65,20 +66,22 @@ export interface IItemView extends IView {
 }
 
 export interface ICartView extends IView {
-  setCheckoutHandler(handler: () => void): void;
-  setActionHandler(handler: (productId: string, action: 'remove') => void): void;
+  updateCounter(count: number): void;
+  showErrors(errors: any): void; 
 }
 
 export interface IOrderFormView extends IView {
   setSubmitHandler(handler: (data: Partial<Order>) => void): void;
   setNextHandler(handler: () => void): void;
   showErrors(errors: ValidationErrors): void;
+  validate(errors: ValidationErrors): void; 
 }
 
 export interface IContactsFormView extends IView {
   setSubmitHandler(handler: (data: Partial<Order>) => void): void;
   setBackHandler(handler: () => void): void;
   showErrors(errors: ValidationErrors): void;
+  validate(errors: ValidationErrors): void; 
 }
 
 export interface ISuccessView extends IView {
@@ -86,17 +89,21 @@ export interface ISuccessView extends IView {
 }
 
 export interface IProductModalView extends IView {
-  setActionHandler(handler: (product: Product, action: 'add' | 'remove') => void): void;
-  setCloseHandler(handler: () => void): void;
   updateCartState(isInCart: boolean): void;
   getCurrentProductId(): string | null;
   getCurrentProduct(): Product | null;
+}
+
+export interface CartData {
+  items: Product[];
+  total: number;
 }
 
 export interface IModalView {
   open(content: HTMLElement): void;
   close(): void;
   isOpen(): boolean;
+  getContent(): HTMLElement; 
 }
 
 export interface IApi {
@@ -118,4 +125,16 @@ export interface ModalData {
 
 export interface ProductData {
   product: Product;
+  isInCart?: boolean; 
+}
+
+export interface CartActionData {
+  product?: Product;
+  productId?: string;
+  action: 'add' | 'remove';
+}
+
+export interface OrderChangeData {
+  field: keyof Order;
+  value: any;
 }

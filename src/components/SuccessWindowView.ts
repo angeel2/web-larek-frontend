@@ -1,5 +1,6 @@
 import { ISuccessView } from '../types';
 import { ensureElement, ensureButtonElement } from '../utils/utils';
+import { EventEmitter } from './base/events';
 
 export class SuccessWindowView implements ISuccessView {
   private element: HTMLElement;
@@ -7,14 +8,28 @@ export class SuccessWindowView implements ISuccessView {
   private closeButton: HTMLButtonElement;
   private continueHandler?: () => void;
 
-  constructor(template: HTMLElement) {
+  constructor(template: HTMLElement, private events: EventEmitter) {
     this.element = template;
     this.descriptionElement = ensureElement('.order-success__description', this.element);
     this.closeButton = ensureButtonElement('.order-success__close', this.element);
 
     this.closeButton.addEventListener('click', () => {
-      this.continueHandler?.();
+      this.handleContinue();
     });
+
+    this.element.addEventListener('click', (e) => {
+      if (e.target === this.element) {
+        this.handleContinue();
+      }
+    });
+  }
+
+  private handleContinue(): void {
+    if (this.continueHandler) {
+      this.continueHandler();
+    } else {
+      this.events.emit('modal:close');
+    }
   }
 
   render(data?: unknown): HTMLElement {
@@ -28,4 +43,4 @@ export class SuccessWindowView implements ISuccessView {
   setContinueHandler(handler: () => void): void {
     this.continueHandler = handler;
   }
-} 
+}

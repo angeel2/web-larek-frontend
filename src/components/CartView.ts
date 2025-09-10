@@ -1,63 +1,86 @@
 import { ICartView } from '../types';
-import { ensureElement, ensureButtonElement } from '../utils/utils';
-
-interface CartData {
-  items: HTMLElement[];
-  total: number;
-}
+import { ensureElement, ensureButtonElement, ensureTemplateElement } from '../utils/utils';
+import { CartItemView } from './CartItemView';
+import { EventEmitter } from './base/events';
 
 export class CartView implements ICartView {
-  private element: HTMLElement;
-  private list: HTMLElement;
-  private totalElement: HTMLElement;
-  private checkoutButton: HTMLButtonElement;
-  private actionHandler?: (productId: string, action: 'remove') => void;
+    private element: HTMLElement;
+    private list: HTMLElement;
+    private totalElement: HTMLElement;
+    private checkoutButton: HTMLButtonElement;
+    private itemTemplate: HTMLTemplateElement;
 
-  constructor(template: HTMLElement) {
-    this.element = template;
-    this.list = ensureElement('.basket__list', this.element);
-    this.totalElement = ensureElement('.basket__price', this.element);
-    this.checkoutButton = ensureButtonElement('.basket__button', this.element);
-  }
-
-  render(data?: unknown): HTMLElement {
-    const cartData = data as CartData;
-    this.list.innerHTML = '';
-    
-    if (cartData?.items && cartData.items.length > 0) {
-      cartData.items.forEach(item => this.list.appendChild(item));
-      this.totalElement.textContent = `${cartData.total} синапсов`;
-      this.checkoutButton.disabled = false;
-    } else {
-      const emptyMessage = document.createElement('p');
-      emptyMessage.className = 'basket__empty';
-      emptyMessage.textContent = 'Корзина пуста';
-      this.list.appendChild(emptyMessage);
-      this.totalElement.textContent = '0 синапсов';
-      this.checkoutButton.disabled = true;
+    constructor(
+        template: HTMLElement, 
+        private events: EventEmitter, 
+        private getCartItems: () => any[],
+        private getCartTotal: () => number
+    ) {
+        this.element = template;
+        this.list = ensureElement('.basket__list', this.element);
+        this.totalElement = ensureElement('.basket__price', this.element);
+        this.checkoutButton = ensureButtonElement('.basket__button', this.element);
+        this.itemTemplate = ensureTemplateElement('#card-basket');
+        
+        this.initEvents();
+        this.initCheckout();
     }
-    
-    return this.element;
-  }
 
-  setCheckoutHandler(handler: () => void): void {
-    this.checkoutButton.addEventListener('click', handler);
-  }
+    private initEvents(): void {
+        this.events.on('cart:list-updated', () => {
+            this.update();
+        });
+    }
 
-  setActionHandler(handler: (productId: string, action: 'remove') => void): void {
-    this.actionHandler = handler;
-    
-    this.list.addEventListener('click', (event) => {
-      const target = event.target as HTMLElement;
-      if (target.classList.contains('basket__item-delete')) {
-        const item = target.closest('.basket__item');
-        const productId = item?.getAttribute('data-id');
-        if (productId && this.actionHandler) {
-          event.preventDefault();
-          event.stopPropagation();
-          this.actionHandler(productId, 'remove');
+    private initCheckout(): void {
+        this.checkoutButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (this.getCartItems().length === 0) {
+                console.log('Корзина пуста');
+                return;
+            }
+            
+            this.events.emit('order:open');
+        });
+    }
+
+    render(): HTMLElement {
+        this.update();
+        return this.element;
+    }
+
+    update(): void {
+        this.list.innerHTML = '';
+        const items = this.getCartItems();
+        const total = this.getCartTotal();
+
+        if (items && items.length > 0) {
+            items.forEach((product: any, index: number) => {
+                const itemElement = this.createBasketItem(product, index);
+                this.list.appendChild(itemElement);
+            });
+
+            this.totalElement.textContent = `${total} синапсов`;
+            this.checkoutButton.disabled = false;
+        } else {
+            const emptyMessage = document.createElement('p');
+            emptyMessage.className = 'basket__empty';
+            emptyMessage.textContent = 'Корзина пуста';
+            this.list.appendChild(emptyMessage);
+            this.totalElement.textContent = '0 синапсов';
+            this.checkoutButton.disabled = true;
         }
-      }
-    });
-  }
+    }
+
+    private createBasketItem(product: any, index: number): HTMLElement {
+        const itemView = new CartItemView(this.itemTemplate, product, index, this.events);
+        return itemView.getElement();
+    }
+
+    updateCounter(count: number): void {
+    }
+
+    showErrors(errors: any): void {}
 }
