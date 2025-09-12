@@ -74,10 +74,13 @@ export class ProductModalView implements IProductModalView {
         if (!this.currentProduct || this.currentProduct.price === null) return;
 
         const action = this.currentIsInCart ? 'remove' : 'add';
+        
         this.events.emit('cart:action', { 
-            product: this.currentProduct, 
-            action: action 
+            product: action === 'add' ? this.currentProduct : undefined,
+            productId: action === 'remove' ? this.currentProduct.id : undefined,
+            action 
         });
+        
         this.events.emit('modal:close');
     }
 

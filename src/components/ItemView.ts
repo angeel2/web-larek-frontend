@@ -1,5 +1,5 @@
 import { IItemView, Product } from '../types';
-import { ensureElement, ensureImageElement, cloneTemplate, ensureElement as safeEnsureElement } from '../utils/utils';
+import { ensureElement, ensureImageElement, cloneTemplate } from '../utils/utils';
 
 interface ItemViewData {
   product: Product;
@@ -23,6 +23,8 @@ export class ItemView implements IItemView {
     this.title = ensureElement('.card__title', this.element);
     this.category = ensureElement('.card__category', this.element);
     this.price = ensureElement('.card__price', this.element);
+    
+    this.element.setAttribute('data-id', this.product.id);
   }
 
   render(data?: unknown): HTMLElement {
@@ -57,24 +59,5 @@ export class ItemView implements IItemView {
       'кнопка': 'card__category_button'
     };
     return categoryMap[category] || 'card__category_other';
-  }
-
-  static getGalleryElement(): HTMLElement {
-    return ensureElement('.gallery');
-  }
-
-  static showError(message: string): void {
-    const gallery = ensureElement('.gallery');
-    gallery.innerHTML = `<p class="error">${message}</p>`;
-  }
-
-  static showLoading(): void {
-    const gallery = ensureElement('.gallery');
-    gallery.innerHTML = '<p class="loading">Загрузка товаров...</p>';
-  }
-
-  static clearGallery(): void {
-    const gallery = ensureElement('.gallery');
-    gallery.innerHTML = '';
   }
 }

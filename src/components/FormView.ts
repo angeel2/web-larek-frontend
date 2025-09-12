@@ -1,4 +1,4 @@
-import { IOrderFormView, IContactsFormView, PaymentType, ValidationErrors } from '../types';
+import { IOrderFormView, PaymentType, ValidationErrors } from '../types';
 import { ensureElement, ensureButtonElement, ensureInputElement } from '../utils/utils';
 import { EventEmitter } from './base/events';
 
@@ -28,8 +28,8 @@ export class OrderFormView implements IOrderFormView {
     this.setPayment(orderData?.payment || PaymentType.ONLINE, false);
     this.addressInput.value = orderData?.address || '';
     
-    this.updateButton();
     this.clearErrors();
+    this.updateButton();
     return this.element;
   }
 
@@ -68,13 +68,6 @@ export class OrderFormView implements IOrderFormView {
 
     this.addressInput.addEventListener('input', () => {
       this.events.emit('order:change', { field: 'address', value: this.addressInput.value });
-      this.updateButton();
-    });
-
-    this.nextButton.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      this.events.emit('order:next');
     });
 
     this.element.addEventListener('submit', (e) => {
@@ -91,111 +84,21 @@ export class OrderFormView implements IOrderFormView {
     if (emitEvent) {
       this.events.emit('order:change', { field: 'payment', value: payment });
     }
-    
-    this.updateButton();
   }
 
   private updateButton(): void {
     const hasPayment = this.currentPayment !== null;
     const hasAddress = this.addressInput.value.trim() !== '';
-    this.nextButton.disabled = !(hasPayment && hasAddress);
+    const hasErrors = this.errorsContainer.children.length > 0;
+    
+    this.nextButton.disabled = !(hasPayment && hasAddress) || hasErrors;
   }
 
   private clearErrors(): void {
     this.errorsContainer.innerHTML = '';
   }
 
-  setNextHandler(handler: () => void): void {}
-  setSubmitHandler(handler: (data: any) => void): void {}
-}
-
-export class ContactsFormView implements IContactsFormView {
-  private element: HTMLElement;
-  private emailInput: HTMLInputElement;
-  private phoneInput: HTMLInputElement;
-  private submitButton: HTMLButtonElement;
-  private errorsContainer: HTMLElement;
-
-  constructor(template: HTMLElement, private events: EventEmitter) {
-    this.element = template;
-    this.emailInput = ensureInputElement('input[name="email"]', this.element);
-    this.phoneInput = ensureInputElement('input[name="phone"]', this.element);
-    this.submitButton = ensureButtonElement('button[type="submit"]', this.element);
-    this.errorsContainer = ensureElement('.form__errors', this.element);
-
-    this.init();
+  isOrderForm(): boolean {
+    return !!this.element.querySelector('input[name="address"]');
   }
-
-  render(data?: unknown): HTMLElement {
-    const orderData = data as { email?: string; phone?: string };
-    
-    this.emailInput.value = orderData?.email || '';
-    this.phoneInput.value = orderData?.phone || '';
-    
-    this.updateButton();
-    this.clearErrors();
-    return this.element;
-  }
-
-  showErrors(errors: ValidationErrors): void {
-    this.clearErrors();
-    
-    if (errors.email) {
-      const error = document.createElement('div');
-      error.className = 'form__error';
-      error.textContent = errors.email;
-      this.errorsContainer.appendChild(error);
-    }
-    
-    if (errors.phone) {
-      const error = document.createElement('div');
-      error.className = 'form__error';
-      error.textContent = errors.phone;
-      this.errorsContainer.appendChild(error);
-    }
-
-    this.updateButton();
-  }
-
-  validate(errors: ValidationErrors): void {
-    this.showErrors(errors);
-  }
-
-  private init(): void {
-    this.emailInput.addEventListener('input', () => {
-      this.events.emit('order:change', { field: 'email', value: this.emailInput.value });
-      this.updateButton();
-    });
-
-    this.phoneInput.addEventListener('input', () => {
-      this.events.emit('order:change', { field: 'phone', value: this.phoneInput.value });
-      this.updateButton();
-    });
-
-    this.submitButton.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      this.events.emit('order:submit');
-    });
-
-    this.element.addEventListener('submit', (e) => {
-      e.preventDefault();
-      this.events.emit('order:submit');
-    });
-  }
-
-  private updateButton(): void {
-    const email = this.emailInput.value.trim();
-    const phone = this.phoneInput.value.trim();
-    const isEnabled = email !== '' && phone !== '';
-    
-    this.submitButton.disabled = !isEnabled;
-  }
-
-  private clearErrors(): void {
-    this.errorsContainer.innerHTML = '';
-  }
-
-  setBackHandler(handler: () => void): void {}
-  setSubmitHandler(handler: (data: any) => void): void {}
 }
